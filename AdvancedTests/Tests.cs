@@ -166,7 +166,7 @@ namespace AdvancedTests
             var started = System.DateTime.Now;
             int K = 0;
             var needed = System.TimeSpan.FromSeconds(2);
-            while (System.DateTime.Now - started < needed)
+            while (K < 1000 || System.DateTime.Now - started < needed)
             {
                 for (int counter = 1; counter < 1000; counter++)
                 {

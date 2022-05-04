@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
-    <Configurations>Debug;Release;asdfasdf</Configurations>
+    <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
 
 </Project>

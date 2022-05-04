@@ -114,6 +114,7 @@
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => All.GetEnumerator();
     }
 
+    [System.Obsolete("Not implemented yet")]
     public sealed class SortedCollection<TKey, TValue> : BaseSortedCollection<TKey, TValue> where TValue : IConvertableTo<TKey>
     {
         public SortedCollection(int capacity) : base(capacity) { }
@@ -132,6 +133,7 @@
         }
     }
 
+    [System.Obsolete("Not implemented yet")]
     public sealed class SortedCollection<T> : BaseSortedCollection<T, T> where T : System.IComparable<T>
     {
         public SortedCollection(int capacity) : base(capacity) { }
