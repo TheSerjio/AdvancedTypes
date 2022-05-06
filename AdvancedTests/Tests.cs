@@ -4,81 +4,43 @@ using AdvancedTypes;
 namespace AdvancedTests
 {
     [TestClass]
-    public sealed class TestCollections
+    public sealed class Test_1_Trees
     {
         [TestMethod]
-        public void TestBigIntCollections()
+        public void MainTest()
         {
             var rand = new System.Random();
 
-            var mono = new SortedCollection<int>(16);
-            var list = new System.Collections.Generic.List<int>();
+            var list = new System.Collections.Generic.HashSet<int>();
+            var tree = new BinaryTree<int, int>();
 
-            for (int counter = 1; counter < 4; counter++)
+            for (int count = 1; count < 5000; count++)
             {
-                for (int tries = 0; tries < 10000; tries++)
+                list.Clear();
+
+                for (int i = 0; i < count; i++)
                 {
-                    mono.Clear();
-                    list.Clear();
-
-                    for (int i = 0; i < counter; i++)
-                    {
-                        var n = rand.Next();
-                        if (mono.Add(n))
-                            list.Add(n);
-                    }
-                    list.Sort();
-
-                    for (int i = 0; i < list.Count; i++)
-                        if (list[i] != mono[i])
-                        {
-                            System.Console.WriteLine(string.Join(',', mono));
-                            System.Console.WriteLine(string.Join(',', list));
-                            throw new AssertFailedException();
-                        }
+                    var n = rand.Next();
+                    tree.Insert(n, n, out var _, true);
+                    list.Add(n);
                 }
-            }
-        }
 
-        [TestMethod]
-        public void TestArrays()
-        {
-            var array = new byte[128];
-            var rand = new System.Random();
-            for (int counter = 0; counter < 1000; counter++)
-            {
-                rand.NextBytes(array);
-                System.Array.Sort(array);
-                var value = array[rand.Next(array.Length)];
-
-                int lo = 0;
-                int hi = array.Length - 1;
-                int i = -1;
-                while (lo <= hi)
+                int some;
+                using (var Enum = list.GetEnumerator())
                 {
-                    // i might overflow if lo and hi are both large positive numbers.
-                    i = (lo + hi) / 2;
-
-                    int c = array[i].CompareTo(value);
-                    if (c == 0)
-                        break;
-                    if (c < 0)
-                    {
-                        lo = i + 1;
-                    }
-                    else
-                    {
-                        hi = i - 1;
-                    }
+                    Enum.MoveNext();
+                    some = Enum.Current;
                 }
-                //System.Console.WriteLine($"{string.Join(',', array)}; {value}; index: {i}");
-                Assert.AreEqual(array[i], value);
+
+                Assert.IsTrue(tree.Find(some, out var result));
+                Assert.IsTrue(result == some);
+                while (!tree.IsEmpty) tree.TakeOne();
             }
         }
     }
 
     [TestClass]
-    public sealed class TestNumbers
+    public sealed class Test_2_Numbers
     {
         private readonly System.Random randy = new();
 
@@ -99,13 +61,13 @@ namespace AdvancedTests
         private double Conv(Precise p) => (double)p;
 
         [TestMethod]
-        public void AddPrecise() => Test((double d1, double d2) => d1 + d2, (Precise p1, Precise p2) => p1 + p2, GenP, Conv);
+        public void AddPrecise() => Test((double d1, double d2) => d1 + d2, (Precise p1, Precise p2) => p1 + p2, GenP, Conv, "+");
 
         [TestMethod]
-        public void SubPrecise() => Test((double d1, double d2) => d1 - d2, (Precise p1, Precise p2) => p1 - p2, GenP, Conv);
+        public void SubPrecise() => Test((double d1, double d2) => d1 - d2, (Precise p1, Precise p2) => p1 - p2, GenP, Conv, "-");
 
         [TestMethod]
-        public void MulPrecise() => Test((double d1, double d2) => d1 * d2, (Precise p1, Precise p2) => p1 * p2, GenP, Conv);
+        public void MulPrecise() => Test((double d1, double d2) => d1 * d2, (Precise p1, Precise p2) => p1 * p2, GenP, Conv, "*");
 
         [TestMethod]
         public void DivPrecise()
@@ -120,7 +82,7 @@ namespace AdvancedTests
                         p2 = RandomPrecise();
                 }
             }
-            Test((double d1, double d2) => d1 / d2, (Precise p1, Precise p2) => p1 / p2, Gen, Conv);
+            Test((double d1, double d2) => d1 / d2, (Precise p1, Precise p2) => p1 / p2, Gen, Conv, "/");
         }
 
         [TestMethod]
@@ -130,10 +92,10 @@ namespace AdvancedTests
             {
                 p1 = new Precise(randy.Next(64) * randy.NextDouble());
                 p2 = Precise.Zero;
-                while (p2.fractional == 0)
+                while (p2 == Precise.Zero)
                     p2 = new Precise(randy.Next(64) * randy.NextDouble());
             }
-            Test((double d1, double d2) => d1 % d2, (Precise p1, Precise p2) => p1 % p2, Gen, Conv);
+            Test((double d1, double d2) => d1 % d2, (Precise p1, Precise p2) => p1 % p2, Gen, Conv, "%");
         }
 
         [TestMethod]
@@ -144,7 +106,7 @@ namespace AdvancedTests
                 p1 = RandomPrecise().Abs();
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => p1.Root(2), Gen, Conv);
+            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => p1.Root(2), Gen, Conv, "[square root]");
         }
 
         [TestMethod]
@@ -152,30 +114,34 @@ namespace AdvancedTests
         {
             void Gen(out Precise p1, out Precise p2)
             {
-                p1 = RandomPrecise();
+                p1 = RandomPrecise().Abs();
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => p1.Root(3), Gen, Conv);
+            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => p1.Root(3), Gen, Conv, "[cube root]");
         }
 
         delegate void Two<T>(out T t1, out T t2);
 
-        private static void Test<T>(System.Func<double, double, double> funcD, System.Func<T, T, T> func, Two<T> gen, System.Func<T, double> ToD)
+        private static void Test<T>(System.Func<double, double, double> funcD, System.Func<T, T, T> func, Two<T> gen, System.Func<T, double> ToD, string funcName)
         {
             double diff = 0;
             var started = System.DateTime.Now;
             int K = 0;
             var needed = System.TimeSpan.FromSeconds(2);
-            while (K < 1000 || System.DateTime.Now - started < needed)
+            while (K < 100 || System.DateTime.Now - started < needed)
             {
-                for (int counter = 1; counter < 1000; counter++)
+                for (int counter = 0; counter < 1000; counter++)
                 {
                     gen(out var t1, out var t2);
 
-                    diff = System.Math.Max(System.Math.Abs(ToD(func(t1, t2)) - funcD(ToD(t1), ToD(t2))), diff);
+                    var weird = ToD(func(t1, t2));
+
+                    var correct = funcD(ToD(t1), ToD(t2));
+
+                    diff = System.Math.Max(System.Math.Abs(weird - correct), diff);
 
                     if (diff > 0.01)
-                        throw new AssertFailedException($"{t1}, {t2} = diff: {diff}");
+                        throw new AssertFailedException($"{t1}{funcName}{t2}\nWeird:{weird}\nCorrect:{correct}\ndiff: {diff}");
                 }
                 K++;
             }
@@ -188,8 +154,8 @@ namespace AdvancedTests
             static void Do(Precise p, double normal, string name)
             {
                 var diff = (p - new Precise(normal)).Abs();
-                System.Console.WriteLine($"{name}\n precise: {p}\n double: {normal}\n diff:\n{diff.fractional}/\n18446744073709551616\n");
-                if (diff > 10000)
+                System.Console.WriteLine($"{name}\n precise: {p}\n double: {normal}\n diff:\n{(double)diff}\n{diff.fractional}/\n18446744073709551616\n");
+                if (diff > Precise.NegativePowers[2])
                     throw new AssertFailedException("Too large diff");
             }
 
@@ -198,7 +164,7 @@ namespace AdvancedTests
             Do(Precise.PI, System.Math.PI, "pi");
 
             Do(Precise.SquareRoot2, System.Math.Sqrt(2), "sqrt(2)");
-            Do(Precise.SquareRoot3, System.Math.Sqrt(2), "sqrt(3)");
+            Do(Precise.SquareRoot3, System.Math.Sqrt(3), "sqrt(3)");
 
             Do(Precise.CubeRoot2, System.Math.Cbrt(2), "cbrt(2)");
             Do(Precise.CubeRoot3, System.Math.Cbrt(3), "cbrt(3)");

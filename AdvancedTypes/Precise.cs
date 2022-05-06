@@ -9,7 +9,7 @@
         public static readonly Precise Two = new(2);
         public static readonly Precise Half = new(0, ulong.MaxValue / 2 + 1);
         public static readonly Precise ZeroPositive = new(0, 1);
-        public static readonly Precise ZeroNegative = new(1, ulong.MaxValue);
+        public static readonly Precise ZeroNegative = new(-1, ulong.MaxValue);
         public static readonly Precise PositiveLargest = new(long.MaxValue, ulong.MaxValue);
         public static readonly Precise NegativeLargest = new(long.MinValue, 0);
         public static readonly Precise PI, TAU, E;
@@ -39,12 +39,10 @@
             {
                 TAU = Zero;
 
-                Precise n = new(8);
+                Precise eight = new(8);
 
-                for (int i = 1; i < 1000000; i += 4)
-                {
-                    TAU += (n / i) - (n / (i + 2));
-                }
+                for (long i = 1; i < 1000; i += 4)
+                    TAU += (eight / i) - (eight / (i + 2));
 
                 PI = TAU / 2;
             }
@@ -108,28 +106,6 @@
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public long Floor() => integer;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public Precise Root(byte level)
-        {
-            if (level == 0)
-                throw new System.InvalidOperationException("Zero root");
-            if (level == 1 || this == One || this == Zero)
-                return this;
-            if ((level % 2 == 0) && integer < 0)
-                throw new System.InvalidOperationException($"Can`t extract {level} root from negative number");
-
-            var alevel = One / level;
-            Precise current = One;
-            for (int counter = 0; counter < 100; counter++)
-            {
-                Precise powered = One;
-                for (int i = 1; i < level; i++)
-                    powered *= current;
-                current = alevel * ((level - 1) * current + (this / current));
-            }
-            return current;
-        }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public Precise Power(byte level)
@@ -225,6 +201,68 @@
             return a;
         }
 
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Operate(System.Collections.Generic.IEnumerator<Precise> endless, Precise quality, bool dispose = true)
+        {
+            var previous = endless.Current;
+            endless.MoveNext();
+            var current = endless.Current;
+            endless.MoveNext();
+            ulong N = 0;
+            while ((N++ < 1000) || (current - previous).Abs() > quality)
+            {
+                previous = current;
+                endless.MoveNext();
+                current = endless.Current;
+            }
+            if (dispose)
+                endless.Dispose();
+            return previous;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public Precise Root(byte level)
+        {
+            if (this < Zero)
+                throw new System.NotImplementedException("Roots from negative numbers are not supported yet");
+            if (level == 0)
+                throw new System.InvalidOperationException("Zero root");
+            if (level == 1 || this == One || this == Zero)
+                return this;
+            if ((level % 2 == 0) && integer < 0)
+                throw new System.InvalidOperationException($"Can`t extract {level} root from negative number");
+
+            Precise min, max;
+            if (this > One)
+            {
+                min = One;
+                max = this;
+            }
+            else
+            {
+                min = this;
+                max = One;
+            }
+
+            Precise middle;
+            do
+            {
+                middle = (max + min) * Half;
+                var res = One;
+                for (int i = 0; i < level; i++)
+                    res *= middle;
+                if (res == this)
+                    return middle;
+                else if (res > this)
+                    max = middle;
+                else
+                    min = middle;
+            } 
+            while (max - min > ZeroPositive);
+
+            return middle;
+        }
+
         #endregion
         #region Comparsions
 
@@ -314,10 +352,10 @@
         #region Conversions
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public static explicit operator double(Precise q) => q.integer + ((double)q.fractional / ulong.MaxValue);//TODO ulong.maxvalue is not precise
+        public static explicit operator double(Precise q) => q.integer + (q.fractional / 18446744073709551616d);
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public static explicit operator decimal(Precise q) => q.integer + ((decimal)q.fractional / ulong.MaxValue);
+        public static explicit operator decimal(Precise q) => q.integer + (q.fractional / 18446744073709551616m);
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static explicit operator Precise(decimal q) => new(q);
