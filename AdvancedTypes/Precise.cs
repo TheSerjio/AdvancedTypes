@@ -39,9 +39,9 @@
             {
                 TAU = Zero;
 
-                Precise eight = new(8);
+                var eight = new Precise(8);
 
-                for (long i = 1; i < 1000; i += 4)
+                for (long i = 1; i < 1000000; i += 4)
                     TAU += (eight / i) - (eight / (i + 2));
 
                 PI = TAU / 2;
@@ -57,10 +57,10 @@
             }
             {
                 var three = new Precise(3);
-                SquareRoot2 = Two.Root(2);
-                SquareRoot3 = three.Root(2);
-                CubeRoot2 = Two.Root(3);
-                CubeRoot3 = three.Root(3);
+                SquareRoot2 = Root(Two, 2);
+                SquareRoot3 = Root(three, 2);
+                CubeRoot2 = Root(Two, 3);
+                CubeRoot3 = Root(three, 3);
             }
         }
 
@@ -102,21 +102,6 @@
         #region Math
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public Precise Abs() => integer < 0 ? -this : this;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public long Floor() => integer;
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public Precise Power(byte level)
-        {
-            var result = One;
-            for (ushort i = 0; i < level; i++)
-                result *= this;
-            return result;
-        }
-
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise operator -(Precise num)
         {
             if (num.fractional == 0)
@@ -124,6 +109,12 @@
             else
                 return new(-num.integer - 1, ulong.MaxValue - num.fractional + 1);
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise operator ++(Precise from) => new(from.integer + 1, from.fractional);
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise operator --(Precise from) => new(from.integer - 1, from.fractional);
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise operator +(Precise a, Precise b)
@@ -134,15 +125,14 @@
                 inted++;
             return new(inted, frac);
         }
-
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise operator -(Precise a, Precise b) => a + -b;
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise operator *(Precise a, Precise b)
         {
-            var absA = a.Abs();
-            var absB = b.Abs();
+            var absA = Abs(a);
+            var absB = Abs(b);
             var intA = (ulong)absA.integer;
             var intB = (ulong)absB.integer;
             ulong inted = intA * intB;
@@ -181,7 +171,7 @@
                     else
                         throw new System.DivideByZeroException();
                 else
-                    return new Precise(1 / (double)b);//TODO
+                    throw new System.NotSupportedException();//TODO
             }
             else
                 return a * (One / b);//TODO
@@ -202,45 +192,83 @@
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public static Precise Operate(System.Collections.Generic.IEnumerator<Precise> endless, Precise quality, bool dispose = true)
+        public static Precise Square(Precise of)
         {
-            var previous = endless.Current;
-            endless.MoveNext();
-            var current = endless.Current;
-            endless.MoveNext();
-            ulong N = 0;
-            while ((N++ < 1000) || (current - previous).Abs() > quality)
+            of = Abs(of);
+            var intOf = (ulong)of.integer;
+            ulong inted = intOf * intOf;
+            ulong frac = System.Math.BigMul(of.fractional, of.fractional, out ulong _);
+
             {
-                previous = current;
-                endless.MoveNext();
-                current = endless.Current;
+                inted += System.Math.BigMul(intOf, of.fractional, out ulong low) * 2;
+                var prev = frac;
+                frac += low;
+                if (frac < prev)
+                    inted++;
+
+                prev = frac;
+                frac += low;
+                if (frac < prev)
+                    inted++;
             }
-            if (dispose)
-                endless.Dispose();
-            return previous;
+
+            return new Precise((long)inted, frac);
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-        public Precise Root(byte level)
+        public static Precise Abs(Precise of) => of.integer < 0 ? -of : of;
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static long Floor(Precise of) => of.integer;
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Power(Precise of, byte level)
         {
-            if (this < Zero)
-                throw new System.NotImplementedException("Roots from negative numbers are not supported yet");
+            switch (level)
+            {
+                case 0:
+                    if (of == Zero)
+                        throw new System.ArithmeticException("Zero in zero power is not supported");
+                    else
+                        return One;
+                case 1:
+                    return of;
+                case 2:
+                    return Square(of);
+                case 3:
+                    return Square(of) * of;
+                case 4:
+                    return Square(Square(of));
+                default:
+                    var result = Square(Square(of));
+                    for (ushort i = 4; i < level; i++)
+                        result *= of;
+                    return result;
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Root(Precise from, byte level)
+        {
+            if (from < Zero)
+                throw new System.NotImplementedException("Roots from negative numbers are not supported yet");//TODO
             if (level == 0)
                 throw new System.InvalidOperationException("Zero root");
-            if (level == 1 || this == One || this == Zero)
-                return this;
-            if ((level % 2 == 0) && integer < 0)
+            if (level == 1 || from == One || from == Zero)
+                return from;
+            if ((level % 2 == 0) && from.integer < 0)
                 throw new System.InvalidOperationException($"Can`t extract {level} root from negative number");
 
             Precise min, max;
-            if (this > One)
+
+            if (from > One)
             {
                 min = One;
-                max = this;
+                max = from;
             }
             else
             {
-                min = this;
+                min = from;
                 max = One;
             }
 
@@ -251,13 +279,13 @@
                 var res = One;
                 for (int i = 0; i < level; i++)
                     res *= middle;
-                if (res == this)
+                if (res == from)
                     return middle;
-                else if (res > this)
+                else if (res > from)
                     max = middle;
                 else
                     min = middle;
-            } 
+            }
             while (max - min > ZeroPositive);
 
             return middle;
@@ -353,7 +381,6 @@
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static explicit operator double(Precise q) => q.integer + (q.fractional / 18446744073709551616d);
-
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static explicit operator decimal(Precise q) => q.integer + (q.fractional / 18446744073709551616m);
 

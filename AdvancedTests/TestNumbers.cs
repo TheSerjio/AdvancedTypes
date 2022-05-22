@@ -4,43 +4,7 @@ using AdvancedTypes;
 namespace AdvancedTests
 {
     [TestClass]
-    public sealed class Test_1_Trees
-    {
-        [TestMethod]
-        public void MainTest()
-        {
-            var rand = new System.Random();
-
-            var list = new System.Collections.Generic.HashSet<int>();
-            var tree = new BinaryTree<int, int>();
-
-            for (int count = 1; count < 5000; count++)
-            {
-                list.Clear();
-
-                for (int i = 0; i < count; i++)
-                {
-                    var n = rand.Next();
-                    tree.Insert(n, n, out var _, true);
-                    list.Add(n);
-                }
-
-                int some;
-                using (var Enum = list.GetEnumerator())
-                {
-                    Enum.MoveNext();
-                    some = Enum.Current;
-                }
-
-                Assert.IsTrue(tree.Find(some, out var result));
-                Assert.IsTrue(result == some);
-                while (!tree.IsEmpty) tree.TakeOne();
-            }
-        }
-    }
-
-    [TestClass]
-    public sealed class Test_2_Numbers
+    public sealed class TestNumbers
     {
         private readonly System.Random randy = new();
 
@@ -48,8 +12,23 @@ namespace AdvancedTests
 
         private Precise RandomPrecise()
         {
-            randy.NextBytes(__bytes__);
-            return new(randy.Next(-10, 11), System.BitConverter.ToUInt64(__bytes__));
+            var mode = randy.Next(3);
+            switch (mode)
+            {
+                case 0:
+                    randy.NextBytes(__bytes__);
+                    return new(randy.Next(-3, 4), System.BitConverter.ToUInt64(__bytes__));
+                case 1:
+                    randy.NextBytes(__bytes__);
+                    var frac = System.BitConverter.ToUInt64(__bytes__);
+                    randy.NextBytes(__bytes__);
+                    return new(System.BitConverter.ToInt16(__bytes__), frac);
+                case 2:
+                    randy.NextBytes(__bytes__);
+                    return new(System.BitConverter.ToInt16(__bytes__), 0);
+                default:
+                    throw new System.ArgumentOutOfRangeException();
+            }
         }
 
         private void GenP(out Precise p1, out Precise p2)
@@ -77,8 +56,8 @@ namespace AdvancedTests
                 p1 = RandomPrecise();
                 lock (randy)
                 {
-                    p2 = RandomPrecise();
-                    while (p2.Abs().fractional < 1000)
+                    p2 = Precise.Abs(RandomPrecise());
+                    while (p2 < Precise.Half)
                         p2 = RandomPrecise();
                 }
             }
@@ -103,10 +82,41 @@ namespace AdvancedTests
         {
             void Gen(out Precise p1, out Precise p2)
             {
-                p1 = RandomPrecise().Abs();
+                p1 = Precise.Abs(RandomPrecise());
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => p1.Root(2), Gen, Conv, "[square root]");
+            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => Precise.Root(p1, 2), Gen, Conv, "[square root]");
+        }
+
+        [TestMethod]
+        public void SqrPrecise() => Test((double d1, double d2) => d1 * d1, (Precise p1, Precise p2) => Precise.Square(p1), GenP, Conv, "[square]");
+
+        [TestMethod]
+        public void PowPrecise()
+        {
+            void Gen(out Precise p1, out Precise p2)
+            {
+                p1 = Precise.Zero;
+                p2 = Precise.Zero;
+                while (p1 == Precise.Zero && p2 == Precise.Zero)
+                {
+                    p1 = Precise.Abs(RandomPrecise());
+                    p1 = new(p1.integer / 10000, p1.fractional);
+                    p2 = (byte)randy.Next(10);
+                }
+            }
+            Test((double d1, double d2) => System.Math.Pow(d1, d2), (Precise p1, Precise p2) => Precise.Power(p1, (byte)p2.integer), Gen, Conv, "^");
+        }
+
+        [TestMethod]
+        public void RootPrecise()
+        {
+            void Gen(out Precise p1, out Precise p2)
+            {
+                p1 = Precise.Abs(RandomPrecise());
+                p2 = randy.Next(1, 5);
+            }
+            Test((double d1, double d2) => System.Math.Pow(d1, 1 / d2), (Precise p1, Precise p2) => Precise.Root(p1, (byte)p2.integer), Gen, Conv, "^");
         }
 
         [TestMethod]
@@ -114,10 +124,10 @@ namespace AdvancedTests
         {
             void Gen(out Precise p1, out Precise p2)
             {
-                p1 = RandomPrecise().Abs();
+                p1 = Precise.Abs(RandomPrecise());//TODO not ABS
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => p1.Root(3), Gen, Conv, "[cube root]");
+            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => Precise.Root(p1,3), Gen, Conv, "[cube root]");
         }
 
         delegate void Two<T>(out T t1, out T t2);
@@ -153,9 +163,9 @@ namespace AdvancedTests
         {
             static void Do(Precise p, double normal, string name)
             {
-                var diff = (p - new Precise(normal)).Abs();
+                var diff = Precise.Abs(p - new Precise(normal));
                 System.Console.WriteLine($"{name}\n precise: {p}\n double: {normal}\n diff:\n{(double)diff}\n{diff.fractional}/\n18446744073709551616\n");
-                if (diff > Precise.NegativePowers[2])
+                if (diff > Precise.NegativePowers[8])
                     throw new AssertFailedException("Too large diff");
             }
 
