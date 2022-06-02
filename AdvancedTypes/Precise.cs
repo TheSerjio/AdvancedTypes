@@ -16,30 +16,25 @@
         public static readonly Precise ZeroNegative = new(-1, ulong.MaxValue);
         public static readonly Precise PositiveLargest = new(long.MaxValue, ulong.MaxValue);
         public static readonly Precise NegativeLargest = new(long.MinValue, 0);
-        public static readonly Precise PI, TAU, E;
-        public static readonly Precise SquareRoot2, SquareRoot3, CubeRoot2, CubeRoot3;
-        public static readonly System.Collections.ObjectModel.ReadOnlyCollection<Precise> Powers;
-        public static readonly System.Collections.ObjectModel.ReadOnlyCollection<Precise> NegativePowers;
+        public static Precise QuarterPI { get; private set; }
+        public static Precise HalfPI { get; private set; }
+        public static Precise PI { get; private set; }
+        public static Precise TAU { get; private set; }
+        public static Precise E { get; private set; }
+        public static Precise SquareRoot2 { get; private set; }
+        public static Precise SquareRoot3 { get; private set; }
+        public static Precise CubeRoot2 { get; private set; }
+        public static Precise CubeRoot3{ get; private set; }
+        const int SineApproxCount = 1024;
+        private static Precise[] SineAppox = new Precise[SineApproxCount];
 
-        static Precise()
+        public static void Initialize()
         {
-            {
-                int Count = 60;
-                var big = new Precise[Count];
-                var small = new Precise[Count];
+            if (SineAppox == null)
+                SineAppox = new Precise[SineApproxCount];
+            else
+                throw new System.InvalidOperationException("Already initialized");
 
-                big[0] = One;
-                small[0] = One;
-
-                for (int i = 1; i < Count; i++)
-                {
-                    big[i] = big[i - 1] * Two;
-                    small[i] = small[i - 1] * Half;
-                }
-
-                Powers = System.Array.AsReadOnly(big);
-                NegativePowers = System.Array.AsReadOnly(small);
-            }
             {
                 TAU = Zero;
 
@@ -49,6 +44,8 @@
                     TAU += (eight / i) - (eight / (i + 2));
 
                 PI = TAU / 2;
+                HalfPI = PI / 2;
+                QuarterPI = HalfPI / 2;
             }
             {
                 int Q = 32;
@@ -65,6 +62,18 @@
                 SquareRoot3 = Root(three, 2);
                 CubeRoot2 = Root(Two, 3);
                 CubeRoot3 = Root(three, 3);
+            }
+            {
+                var pi2 = PI * PI;
+                for(int index = 0; index < SineApproxCount; index++)
+                {
+                    var angle2 = TAU * index / SineApproxCount;
+                    angle2 *= angle2;
+                    var result = One;
+                    for (int n = 1; n < 100; n++)
+                        result *= One - (angle2 / (pi2 * n * n));
+                    SineAppox[index] = result;
+                }
             }
         }
 
@@ -103,7 +112,7 @@
             fractional = f;
         }
         #endregion
-        #region Math
+        #region Operators
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise operator -(Precise num)
@@ -177,8 +186,16 @@
                 else
                     throw new System.NotImplementedException();//TODO
             }
-            else
-                return a * (One / b);//TODO
+            if (a.integer == 0 && b.fractional == 0)
+            {
+                if (b.integer == 0)
+                    throw new System.DivideByZeroException();
+                else if (b.integer < 0)
+                    throw new System.NotImplementedException();//TODO
+                else
+                    return new(0, a.fractional / (ulong)b.integer);
+            }
+            return a * (One / b);//TODO
         }
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
@@ -194,6 +211,9 @@
                 a -= b;
             return a;
         }
+
+        #endregion
+        #region Math
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise Square(Precise of)
@@ -319,6 +339,18 @@
 
         [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
         public static Precise Lerp(Precise t0, Precise t1, Precise time) => t0 * (One - time) + (t1 * time);
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Sin(Precise radians)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Cos(Precise radians)
+        {
+            throw new System.NotImplementedException();
+        }
 
         #endregion
         #region Comparsions

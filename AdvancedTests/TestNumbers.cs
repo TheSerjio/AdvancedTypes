@@ -165,7 +165,7 @@ namespace AdvancedTests
             {
                 var diff = Precise.Abs(p - new Precise(normal));
                 System.Console.WriteLine($"{name}\n precise: {p}\n double: {normal}\n diff:\n{(double)diff}\n{diff.fractional}/\n18446744073709551616\n");
-                if (diff > Precise.NegativePowers[8])
+                if (diff > (Precise)0.001)
                     throw new AssertFailedException("Too large diff");
             }
 
