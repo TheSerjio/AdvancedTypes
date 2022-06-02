@@ -1,4 +1,7 @@
-﻿namespace AdvancedTypes
+﻿using MethodImpl = System.Runtime.CompilerServices.MethodImplAttribute;
+using ImplOptions = System.Runtime.CompilerServices.MethodImplOptions;
+
+namespace AdvancedTypes
 {
     /// <summary>
     /// Fixed-point number, 8 bytes for integer part and 8 to fractional
@@ -6,8 +9,6 @@
     [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct Precise : System.IComparable, System.IComparable<Precise>, System.IEquatable<Precise>, System.IConvertible
     {
-        #region Static
-
         public static readonly Precise Zero = new(0);
         public static readonly Precise One = new(1);
         public static readonly Precise Two = new(2);
@@ -33,22 +34,18 @@
         /// </summary>
         public static void Initialize()
         {
-            if (SineAppox == null)
-                SineAppox = new Precise[SineApproxCount];
-            else
+            if (System.Threading.Interlocked.CompareExchange(ref SineAppox, new Precise[SineApproxCount], null) != null)
                 throw new System.InvalidOperationException("Already initialized");
 
             {
-                TAU = Zero;
-
-                var eight = new Precise(8);
+                QuarterPI = Zero;//TODO start from tau
 
                 for (long i = 1; i < 1000000; i += 4)
-                    TAU += (eight / i) - (eight / (i + 2));
+                    QuarterPI += (One / i) - (One / (i + 2));
 
-                PI = TAU / 2;
-                HalfPI = PI / 2;
-                QuarterPI = HalfPI / 2;
+                HalfPI = QuarterPI * 2;
+                PI = HalfPI * 2;
+                TAU = PI * 2;
             }
             {
                 int Q = 32;
@@ -66,7 +63,7 @@
                 CubeRoot2 = Root(Two, 3);
                 CubeRoot3 = Root(three, 3);
             }
-            {
+            /*{
                 var pi2 = PI * PI;
                 for(int index = 0; index < SineApproxCount; index++)
                 {
@@ -77,38 +74,37 @@
                         result *= One - (angle2 / (pi2 * n * n));
                     SineAppox[index] = result;
                 }
-            }
+            }*/
         }
 
-        #endregion
 
         public readonly long integer;
         public readonly ulong fractional;
 
         #region Constructions
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public Precise(long number)
         {
             integer = number;
             fractional = 0;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public Precise(double number)
         {
             integer = (long)System.Math.Floor(number);
             fractional = (ulong)((number - integer) * ulong.MaxValue);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public Precise(decimal number)
         {
             integer = (long)System.Math.Floor(number);
             fractional = (ulong)((number - integer) * ulong.MaxValue);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public Precise(long i, ulong f)
         {
             integer = i;
@@ -117,7 +113,7 @@
         #endregion
         #region Operators
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator -(Precise num)
         {
             if (num.fractional == 0)
@@ -126,13 +122,13 @@
                 return new(-num.integer - 1, ulong.MaxValue - num.fractional + 1);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator ++(Precise from) => new(from.integer + 1, from.fractional);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator --(Precise from) => new(from.integer - 1, from.fractional);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator +(Precise a, Precise b)
         {
             var inted = a.integer + b.integer;
@@ -141,10 +137,11 @@
                 inted++;
             return new(inted, frac);
         }
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator -(Precise a, Precise b) => a + -b;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator *(Precise a, Precise b)
         {
             var absA = Abs(a);
@@ -174,7 +171,7 @@
             return negative ? -result : result;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator /(Precise a, Precise b)
         {
             if (a == One)
@@ -201,7 +198,7 @@
             return a * (One / b);//TODO
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise operator %(Precise a, Precise b)
         {
             if (b <= Zero)
@@ -214,6 +211,15 @@
                 a -= b;
             return a;
         }
+
+        [MethodImpl(ImplOptions.AggressiveInlining)]
+        public static Precise operator |(Precise a, Precise b) => new(a.integer | b.integer, a.fractional | b.fractional);
+
+        [MethodImpl(ImplOptions.AggressiveInlining)]
+        public static Precise operator ^(Precise a, Precise b) => new(a.integer ^ b.integer, a.fractional ^ b.fractional);
+
+        [MethodImpl(ImplOptions.AggressiveInlining)]
+        public static Precise operator &(Precise a, Precise b) => new(a.integer & b.integer, a.fractional & b.fractional);
 
         #endregion
         #region Math
@@ -242,13 +248,13 @@
             return new Precise((long)inted, frac);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Abs(Precise of) => of.integer < 0 ? -of : of;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static long Floor(Precise of) => of.integer;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Power(Precise of, byte level)
         {
             switch (level)
@@ -274,7 +280,7 @@
             }
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Root(Precise from, byte level)
         {
             if (from < Zero)
@@ -318,7 +324,7 @@
             return middle;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Clamp(Precise value, Precise min, Precise max)
         {
             if (value < min)
@@ -329,7 +335,7 @@
                 return value;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Clamp01(Precise value)
         {
             if (value.integer < 0)
@@ -340,31 +346,49 @@
                 return value;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Lerp(Precise t0, Precise t1, Precise time) => t0 * (One - time) + (t1 * time);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Sin(Precise radians)
         {
             throw new System.NotImplementedException();
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static Precise Cos(Precise radians)
         {
             throw new System.NotImplementedException();
         }
 
+        [MethodImpl(ImplOptions.AggressiveInlining)]
+        public static Precise Max(Precise p1, Precise p2)
+        {
+            if (p1 > p2)
+                return p1;
+            else
+                return p2;
+        }
+
+        [MethodImpl(ImplOptions.AggressiveInlining)]
+        public static Precise Min(Precise p1, Precise p2)
+        {
+            if (p1 < p2)
+                return p1;
+            else
+                return p2;
+        }
+
         #endregion
         #region Comparsions
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator ==(Precise a, Precise b) => a.integer == b.integer && a.fractional == b.fractional;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator !=(Precise a, Precise b) => a.integer != b.integer || a.fractional != b.fractional;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public override bool Equals(object obj)
         {
             if (obj == null)
@@ -375,7 +399,7 @@
                 return false;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public int CompareTo(object obj)
         {
             if (obj == null)
@@ -386,7 +410,7 @@
                 throw new System.ArgumentException("object is not precise", nameof(obj));
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public int CompareTo(Precise other)
         {
             if (integer == other.integer)
@@ -395,16 +419,16 @@
                 return integer.CompareTo(other.integer);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public bool Equals(Precise other) => this == other;
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public override int GetHashCode()
         {
             return (int)(integer * (long)fractional);
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator >(Precise a, Precise b)
         {
             if (a.integer == b.integer)
@@ -413,7 +437,7 @@
                 return a.integer > b.integer;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator <(Precise a, Precise b)
         {
             if (a.integer == b.integer)
@@ -422,7 +446,7 @@
                 return a.integer < b.integer;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator >=(Precise a, Precise b)
         {
             if (a.integer == b.integer)
@@ -431,7 +455,7 @@
                 return a.integer >= b.integer;
         }
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static bool operator <=(Precise a, Precise b)
         {
             if (a.integer == b.integer)
@@ -443,19 +467,19 @@
         #endregion
         #region Conversions
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static explicit operator double(Precise q) => q.integer + (q.fractional / 18446744073709551616d);
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static explicit operator decimal(Precise q) => q.integer + (q.fractional / 18446744073709551616m);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static explicit operator Precise(decimal q) => new(q);
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static explicit operator Precise(double q) => new(q);
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public static implicit operator Precise(long q) => new(q, 0);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(ImplOptions.AggressiveInlining)]
         public override string ToString() => ((double)this).ToString();
 
         #endregion

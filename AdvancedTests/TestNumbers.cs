@@ -10,6 +10,23 @@ namespace AdvancedTests
 
         private readonly byte[] __bytes__ = new byte[8];
 
+        public delegate T Func<T>(T left, T right);
+
+        public delegate void Gen(out Precise c1, out Precise c2);
+
+        public TestNumbers()
+        {
+            try
+            {
+                Precise.Initialize();
+                System.Console.WriteLine("Hello world!");
+            }
+            catch(System.InvalidOperationException)
+            {
+
+            }
+        }
+
         private Precise RandomPrecise()
         {
             var mode = randy.Next(3);
@@ -37,16 +54,14 @@ namespace AdvancedTests
             p2 = RandomPrecise();
         }
 
-        private double Conv(Precise p) => (double)p;
+        [TestMethod]
+        public void AddPrecise() => Test((double d1, double d2) => d1 + d2, (Precise p1, Precise p2) => p1 + p2, (decimal d1, decimal d2) => d1 + d2, GenP, "+");
 
         [TestMethod]
-        public void AddPrecise() => Test((double d1, double d2) => d1 + d2, (Precise p1, Precise p2) => p1 + p2, GenP, Conv, "+");
+        public void SubPrecise() => Test((double d1, double d2) => d1 - d2, (Precise p1, Precise p2) => p1 - p2, (decimal d1, decimal d2) => d1 - d2, GenP, "-");
 
         [TestMethod]
-        public void SubPrecise() => Test((double d1, double d2) => d1 - d2, (Precise p1, Precise p2) => p1 - p2, GenP, Conv, "-");
-
-        [TestMethod]
-        public void MulPrecise() => Test((double d1, double d2) => d1 * d2, (Precise p1, Precise p2) => p1 * p2, GenP, Conv, "*");
+        public void MulPrecise() => Test((double d1, double d2) => d1 * d2, (Precise p1, Precise p2) => p1 * p2, (decimal d1, decimal d2) => d1 * d2, GenP, "*");
 
         [TestMethod]
         public void DivPrecise()
@@ -61,7 +76,7 @@ namespace AdvancedTests
                         p2 = RandomPrecise();
                 }
             }
-            Test((double d1, double d2) => d1 / d2, (Precise p1, Precise p2) => p1 / p2, Gen, Conv, "/");
+            Test((double d1, double d2) => d1 / d2, (Precise p1, Precise p2) => p1 / p2, (decimal d1, decimal d2) => d1 / d2, Gen, "/");
         }
 
         [TestMethod]
@@ -74,7 +89,7 @@ namespace AdvancedTests
                 while (p2 == Precise.Zero)
                     p2 = new Precise(randy.Next(64) * randy.NextDouble());
             }
-            Test((double d1, double d2) => d1 % d2, (Precise p1, Precise p2) => p1 % p2, Gen, Conv, "%");
+            Test((double d1, double d2) => d1 % d2, (Precise p1, Precise p2) => p1 % p2, (decimal d1, decimal d2) => d1 % d2, Gen, "%");
         }
 
         [TestMethod]
@@ -85,11 +100,11 @@ namespace AdvancedTests
                 p1 = Precise.Abs(RandomPrecise());
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => Precise.Root(p1, 2), Gen, Conv, "[square root]");
+            Test((double d1, double d2) => System.Math.Sqrt(d1), (Precise p1, Precise p2) => Precise.Root(p1, 2), null, Gen, "[square root]");
         }
 
         [TestMethod]
-        public void SqrPrecise() => Test((double d1, double d2) => d1 * d1, (Precise p1, Precise p2) => Precise.Square(p1), GenP, Conv, "[square]");
+        public void SqrPrecise() => Test((double d1, double d2) => d1 * d1, (Precise p1, Precise p2) => Precise.Square(p1), (decimal d1, decimal d2) => d1 * d1, GenP, "[square]");
 
         [TestMethod]
         public void PowPrecise()
@@ -105,7 +120,7 @@ namespace AdvancedTests
                     p2 = (byte)randy.Next(10);
                 }
             }
-            Test((double d1, double d2) => System.Math.Pow(d1, d2), (Precise p1, Precise p2) => Precise.Power(p1, (byte)p2.integer), Gen, Conv, "^");
+            Test((double d1, double d2) => System.Math.Pow(d1, d2), (Precise p1, Precise p2) => Precise.Power(p1, (byte)p2.integer), null, Gen, "^");
         }
 
         [TestMethod]
@@ -116,7 +131,7 @@ namespace AdvancedTests
                 p1 = Precise.Abs(RandomPrecise());
                 p2 = randy.Next(1, 5);
             }
-            Test((double d1, double d2) => System.Math.Pow(d1, 1 / d2), (Precise p1, Precise p2) => Precise.Root(p1, (byte)p2.integer), Gen, Conv, "^");
+            Test((double d1, double d2) => System.Math.Pow(d1, 1 / d2), (Precise p1, Precise p2) => Precise.Root(p1, (byte)p2.integer), null, Gen, "^");
         }
 
         [TestMethod]
@@ -127,14 +142,15 @@ namespace AdvancedTests
                 p1 = Precise.Abs(RandomPrecise());//TODO not ABS
                 p2 = default;
             }
-            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => Precise.Root(p1,3), Gen, Conv, "[cube root]");
+            Test((double d1, double d2) => System.Math.Cbrt(d1), (Precise p1, Precise p2) => Precise.Root(p1, 3), null, Gen, "[cube root]");
         }
 
-        delegate void Two<T>(out T t1, out T t2);
-
-        private static void Test<T>(System.Func<double, double, double> funcD, System.Func<T, T, T> func, Two<T> gen, System.Func<T, double> ToD, string funcName)
+        private static void Test(Func<double> doubleFunc, Func<Precise> preciseFunc, Func<decimal> decimalFunc, Gen gen, string funcName)
         {
-            double diff = 0;
+            double DoubleDiff = 0;
+            Precise PreciseDiff = 0;
+            decimal DecimalDiff = 0;
+
             var started = System.DateTime.Now;
             int K = 0;
             var needed = System.TimeSpan.FromSeconds(2);
@@ -142,20 +158,22 @@ namespace AdvancedTests
             {
                 for (int counter = 0; counter < 1000; counter++)
                 {
-                    gen(out var t1, out var t2);
+                    gen(out var p1, out var p2);
 
-                    var weird = ToD(func(t1, t2));
+                    var _precise = preciseFunc(p1, p2);
+                    var _double = doubleFunc((double)p1, (double)p2);
+                    var _decimal = decimalFunc == null ? (((decimal)_precise) + (decimal)_double) / 2 : decimalFunc((decimal)p1, (decimal)p2);
 
-                    var correct = funcD(ToD(t1), ToD(t2));
+                    DoubleDiff = System.Math.Max(System.Math.Abs((double)_decimal - (double)_precise), DoubleDiff);
+                    PreciseDiff = Precise.Max(Precise.Abs((Precise)_double - (Precise)_decimal), PreciseDiff);
+                    DecimalDiff = System.Math.Max(System.Math.Abs((decimal)_precise - (decimal)_double), DecimalDiff);
 
-                    diff = System.Math.Max(System.Math.Abs(weird - correct), diff);
-
-                    if (diff > 0.01)
-                        throw new AssertFailedException($"{t1}{funcName}{t2}\nWeird:{weird}\nCorrect:{correct}\ndiff: {diff}");
+                    if (DoubleDiff > 0.01)
+                        throw new AssertFailedException($"{p1}{funcName}{p2}\nPrecise:{_precise}\nDouble:{_double}\nDecimal{_double}\ndiff: {DoubleDiff}");
                 }
                 K++;
             }
-            System.Console.WriteLine($"{K}k operations\nMax diff: {diff}");
+            System.Console.WriteLine($"{K}k operations\nMax diff:\nDouble: {DoubleDiff}\nPrecise: {PreciseDiff}\nDecimal: {DecimalDiff}");
         }
 
         [TestMethod]
@@ -180,6 +198,36 @@ namespace AdvancedTests
             Do(Precise.CubeRoot3, System.Math.Cbrt(3), "cbrt(3)");
 
             Do(Precise.Square(Precise.SquareRoot2), 2, "sqrt(2)^2");
+        }
+
+        [TestMethod]
+        public void RealMath()
+        {
+            var precise = new System.Collections.Generic.List<string>();
+            Add(typeof(Precise), precise);
+            var system = new System.Collections.Generic.List<string>();
+            Add(typeof(System.MathF), system);
+            Add(typeof(int), system);
+
+            static void Add(System.Type type, System.Collections.Generic.List<string> to)
+            {
+                foreach (var member in type.GetMembers())
+                {
+                    var txt = member.Name;
+                    if (!to.Contains(txt))
+                        to.Add(txt);
+                }
+            }
+
+            foreach (var m in precise)
+                if (!system.Contains(m))
+                    System.Console.WriteLine($"System has no [{m}]");
+            foreach (var m in system)
+                if (!precise.Contains(m))
+                    System.Console.WriteLine($"Precise has no [{m}]");
+            foreach (var m in system)
+                if (precise.Contains(m))
+                    System.Console.WriteLine($"They both have [{m}]");
         }
     }
 }
