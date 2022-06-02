@@ -178,6 +178,8 @@ namespace AdvancedTests
 
             Do(Precise.CubeRoot2, System.Math.Cbrt(2), "cbrt(2)");
             Do(Precise.CubeRoot3, System.Math.Cbrt(3), "cbrt(3)");
+
+            Do(Precise.Square(Precise.SquareRoot2), 2, "sqrt(2)^2");
         }
     }
 }

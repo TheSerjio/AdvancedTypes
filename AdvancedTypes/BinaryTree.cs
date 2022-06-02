@@ -2,6 +2,7 @@
 
 namespace AdvancedTypes
 {
+    [System.Diagnostics.DebuggerDisplay("Binary Tree:{Count}")]
     public sealed class BinaryTree<T> : ICollection<T> where T : System.IComparable<T>
     {
         public static void ClearCache(bool fast) => Node.ClearCache(fast);

@@ -1,5 +1,9 @@
 ﻿namespace AdvancedTypes
 {
+    /// <summary>
+    /// Fixed-point number, 8 bytes for integer part and 8 to fractional
+    /// </summary>
+    [System.Diagnostics.DebuggerDisplay("{ToString()}")]
     public readonly struct Precise : System.IComparable, System.IComparable<Precise>, System.IEquatable<Precise>, System.IConvertible
     {
         #region Static
@@ -171,7 +175,7 @@
                     else
                         throw new System.DivideByZeroException();
                 else
-                    throw new System.NotSupportedException();//TODO
+                    throw new System.NotImplementedException();//TODO
             }
             else
                 return a * (One / b);//TODO
@@ -184,7 +188,7 @@
                 throw new System.ArithmeticException($"B was not positive {b}");
             if (a == Zero)
                 return a;
-            while (a < Zero)
+            while (a < Zero)//TODO plz no while loops
                 a += b;
             while (a > b)
                 a -= b;
@@ -290,6 +294,31 @@
 
             return middle;
         }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Clamp(Precise value, Precise min, Precise max)
+        {
+            if (value < min)
+                return min;
+            else if (value > max)
+                return max;
+            else
+                return value;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Clamp01(Precise value)
+        {
+            if (value.integer < 0)
+                return Zero;
+            else if (value.integer > 1)
+                return One;
+            else
+                return value;
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        public static Precise Lerp(Precise t0, Precise t1, Precise time) => t0 * (One - time) + (t1 * time);
 
         #endregion
         #region Comparsions
