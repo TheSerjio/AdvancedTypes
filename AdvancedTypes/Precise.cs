@@ -26,8 +26,11 @@
         public static Precise CubeRoot2 { get; private set; }
         public static Precise CubeRoot3{ get; private set; }
         const int SineApproxCount = 1024;
-        private static Precise[] SineAppox = new Precise[SineApproxCount];
+        private static Precise[] SineAppox;
 
+        /// <summary>
+        /// Initializes all properties and trigonometric funcs
+        /// </summary>
         public static void Initialize()
         {
             if (SineAppox == null)
